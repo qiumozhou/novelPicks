@@ -102,6 +102,8 @@ class NovelAnalyzer:
 13. 年龄段
 14. 标签数量、核心标签、标签集中度
 15. 兴趣匹配（受众偏好）
+16. 主要人物列表（提取全书中的核心人物）
+17. 主题标签（提取全书的核心主题和情感标签）
 
 输出为标准化JSON：
 
@@ -126,7 +128,9 @@ class NovelAnalyzer:
     "tag_count": 8,
     "core_tags": ["玄幻", "成长", "复仇"],
     "tag_concentration": "集中",
-    "interest_matching": "高"
+    "interest_matching": "高",
+    "main_characters": ["主角张三", "女主角李四", "反派王五"],
+    "themes": ["成长", "复仇", "友情", "爱情"]
   },
   "meta": {
     "source_id": "uuid-BOOK",

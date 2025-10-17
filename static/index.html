@@ -1479,9 +1479,21 @@
                     </div>
                     
                     <div class="analysis-item">
+                        <h4>👥 主要人物</h4>
+                        <p>${formatCharacters(analysis.main_characters || analysis.characters || [])}</p>
+                    </div>
+                    
+                    <div class="analysis-item">
                         <h4>🏷️ 核心标签</h4>
                         <div class="tags">
-                            ${(analysis.core_tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                            ${(analysis.core_tags || analysis.tags || analysis.themes || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-item">
+                        <h4>🎯 主题标签</h4>
+                        <div class="tags">
+                            ${(analysis.themes || analysis.tags || analysis.keywords || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
                         </div>
                     </div>
                     
