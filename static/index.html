@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小说分析系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .nav {
+            display: flex;
+            border-bottom: 1px solid #e1e5e9;
+            background: #f8f9fa;
+        }
+        
+        .nav-item {
+            flex: 1;
+            padding: 15px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .nav-item:hover {
+            background: #e9ecef;
+        }
+        
+        .nav-item.active {
+            background: white;
+            border-bottom-color: #4facfe;
+            color: #4facfe;
+            font-weight: 600;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .upload-area {
+            border: 3px dashed #4facfe;
+            border-radius: 12px;
+            padding: 60px 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+        
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #4facfe;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        
+        .btn-danger:hover {
+            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+        }
+        
+        .novel-card {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        
+        .novel-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+        
+        .novel-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .novel-meta {
+            color: #6c757d;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-pending {
+            background: #cce7ff;
+            color: #004085;
+        }
+        
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .analysis-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e1e5e9;
+        }
+        
+        .analysis-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .analysis-tab.active {
+            border-bottom-color: #4facfe;
+            color: #4facfe;
+            font-weight: 600;
+        }
+        
+        .analysis-content {
+            display: none;
+        }
+        
+        .analysis-content.active {
+            display: block;
+        }
+        
+        .analysis-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .analysis-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        
+        .analysis-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e1e5e9;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #4facfe;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .tag {
+            background: #4facfe;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 小说分析系统</h1>
+            <p>基于大模型的小说分层结构化分析平台</p>
+        </div>
+        
+        <div class="nav">
+            <div class="nav-item active" data-tab="upload">📤 上传分析</div>
+            <div class="nav-item" data-tab="novels">📖 小说列表</div>
+            <div class="nav-item" data-tab="analysis">📊 分析详情</div>
+        </div>
+        
+        <div class="content">
+            <!-- 上传分析页面 -->
+            <div id="upload-tab" class="tab-content active">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <h3>拖拽小说文件到此处或点击选择</h3>
+                    <p>支持 .txt 格式文件</p>
+                    <input type="file" id="fileInput" accept=".txt" style="display: none;">
+                    <button class="btn" onclick="document.getElementById('fileInput').click()">选择文件</button>
+                </div>
+                
+                <div class="input-group">
+                    <label for="novelTitle">小说标题（可选）</label>
+                    <input type="text" id="novelTitle" placeholder="如不填写将使用文件名">
+                </div>
+                
+                <div id="uploadStatus"></div>
+            </div>
+            
+            <!-- 小说列表页面 -->
+            <div id="novels-tab" class="tab-content">
+                <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 20px;">
+                    <h2>📚 小说库</h2>
+                    <button class="btn" onclick="loadNovels()">🔄 刷新</button>
+                </div>
+                
+                <div id="novelsList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 分析详情页面 -->
+            <div id="analysis-tab" class="tab-content">
+                <div id="analysisContainer">
+                    <div style="text-align: center; padding: 50px; color: #6c757d;">
+                        <h3>请先选择一本小说查看分析结果</h3>
+                        <p>从小说列表中选择已完成分析的小说</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentNovelId = null;
+        let currentAnalysisLevel = 'book';
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            loadNovels();
+        });
+        
+        // 事件监听器初始化
+        function initializeEventListeners() {
+            // 导航标签切换
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+                    switchTab(tabName);
+                });
+            });
+            
+            // 文件上传
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+            
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 拖拽功能
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFileSelect();
+                }
+            });
+        }
+        
+        // 标签切换
+        function switchTab(tabName) {
+            // 更新导航
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // 更新内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // 特殊处理
+            if (tabName === 'novels') {
+                loadNovels();
+            }
+        }
+        
+        // 处理文件选择
+        function handleFileSelect() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            if (!file.name.endsWith('.txt')) {
+                showAlert('error', '请选择 .txt 格式的文件');
+                return;
+            }
+            
+            uploadNovel(file);
+        }
+        
+        // 上传小说
+        async function uploadNovel(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const title = document.getElementById('novelTitle').value;
+            if (title) {
+                formData.append('title', title);
+            }
+            
+            try {
+                showUploadStatus('uploading');
+                
+                const response = await fetch('/api/novels/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showUploadStatus('success', result.message, result.novel_id);
+                    // 清空表单
+                    document.getElementById('fileInput').value = '';
+                    document.getElementById('novelTitle').value = '';
+                    // 刷新列表
+                    loadNovels();
+                } else {
+                    showUploadStatus('error', result.detail || '上传失败');
+                }
+            } catch (error) {
+                showUploadStatus('error', '网络错误: ' + error.message);
+            }
+        }
+        
+        // 显示上传状态
+        function showUploadStatus(status, message = '', novelId = '') {
+            const statusContainer = document.getElementById('uploadStatus');
+            
+            if (status === 'uploading') {
+                statusContainer.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>正在上传并开始分析...</p>
+                    </div>
+                `;
+            } else if (status === 'success') {
+                statusContainer.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>✅ ${message}</strong><br>
+                        小说ID: ${novelId}<br>
+                        分析任务已在后台运行，请稍后查看结果。
+                    </div>
+                `;
+            } else if (status === 'error') {
+                statusContainer.innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>❌ ${message}</strong>
+                    </div>
+                `;
+            }
+        }
+        
+        // 加载小说列表
+        async function loadNovels() {
+            const container = document.getElementById('novelsList');
+            
+            try {
+                container.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>加载中...</p>
+                    </div>
+                `;
+                
+                const response = await fetch('/api/novels');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayNovels(data.novels);
+                } else {
+                    throw new Error(data.detail || '加载失败');
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>加载失败: ${error.message}</strong>
+                    </div>
+                `;
+            }
+        }
+        
+        // 显示小说列表
+        function displayNovels(novels) {
+            const container = document.getElementById('novelsList');
+            
+            if (novels.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 50px; color: #6c757d;">
+                        <h3>暂无小说</h3>
+                        <p>请先上传小说文件</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = novels.map(novel => {
+                console.log('处理小说:', novel);
+                const novelId = novel._id || novel.id;
+                const novelTitle = novel.title || '未知标题';
+                
+                if (!novelId) {
+                    console.error('小说ID缺失:', novel);
+                    return `
+                        <div class="novel-card">
+                            <div class="alert alert-error">
+                                <strong>错误: 小说ID缺失</strong>
+                                <pre>${JSON.stringify(novel, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div class="novel-card">
+                        <div class="novel-title">
+                            ${novelTitle}
+                            <span class="status-badge status-${novel.status}">
+                                ${getStatusText(novel.status)}
+                            </span>
+                        </div>
+                        <div class="novel-meta">
+                            📅 创建时间: ${formatDate(novel.created_at)}
+                            📝 字数: ${novel.word_count?.toLocaleString() || '未知'}
+                            🆔 ID: ${novelId}
+                        </div>
+                        <div>
+                            ${novel.status === 'completed' ? `
+                                <button class="btn" onclick="viewAnalysis('${novelId}', '${novelTitle}')">
+                                    📊 查看分析
+                                </button>
+                            ` : ''}
+                            ${novel.status === 'failed' || novel.status === 'pending' ? `
+                                <button class="btn" onclick="retryAnalysis('${novelId}')">
+                                    🔄 重新分析
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-danger" onclick="deleteNovel('${novelId}', '${novelTitle}')">
+                                🗑️ 删除
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '等待分析',
+                'processing': '分析中',
+                'completed': '已完成',
+                'failed': '分析失败'
+            };
+            return statusMap[status] || status;
+        }
+        
+        // 格式化日期
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString('zh-CN');
+        }
+        
+        // 获取分析值，支持多个可能的字段名
+        function getAnalysisValue(analysis, possibleKeys) {
+            if (!analysis) return 'N/A';
+            
+            for (const key of possibleKeys) {
+                if (analysis[key] !== undefined && analysis[key] !== null && analysis[key] !== '') {
+                    return analysis[key];
+                }
+            }
+            
+            return 'N/A';
+        }
+        
+        // 获取标签，支持多种格式
+        function getTags(analysis, possibleKeys) {
+            if (!analysis) return '';
+            
+            let tags = [];
+            
+            for (const key of possibleKeys) {
+                if (analysis[key]) {
+                    if (Array.isArray(analysis[key])) {
+                        tags = tags.concat(analysis[key]);
+                    } else if (typeof analysis[key] === 'string') {
+                        tags.push(analysis[key]);
+                    }
+                }
+            }
+            
+            // 去重并限制数量
+            tags = [...new Set(tags)].slice(0, 10);
+            
+            if (tags.length === 0) {
+                return '<span class="tag">暂无标签</span>';
+            }
+            
+            return tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+        }
+        
+        // 查看分析结果
+        async function viewAnalysis(novelId, novelTitle) {
+            console.log('查看分析:', novelId, novelTitle);
+            currentNovelId = novelId;
+            switchTab('analysis');
+            await loadAnalysis(novelId, novelTitle);
+        }
+        
+        // 加载分析结果
+        async function loadAnalysis(novelId, novelTitle) {
+            console.log('加载分析数据:', novelId, novelTitle);
+            const container = document.getElementById('analysisContainer');
+            
+            if (!novelId || novelId === 'undefined') {
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>错误: 无效的小说ID</strong>
+                    </div>
+                `;
+                return;
+            }
+            
+            try {
+                container.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>加载分析结果中...</p>
+                    </div>
+                `;
+                
+                // 并行加载三个层级的数据
+                const [bookResponse, groupResponse, chapterResponse] = await Promise.all([
+                    fetch(`/api/novels/${novelId}/analysis/book`),
+                    fetch(`/api/novels/${novelId}/analysis/group`),
+                    fetch(`/api/novels/${novelId}/analysis/chapter`)
+                ]);
+                
+                const bookData = bookResponse.ok ? await bookResponse.json() : null;
+                const groupData = groupResponse.ok ? await groupResponse.json() : [];
+                const chapterData = chapterResponse.ok ? await chapterResponse.json() : [];
+                
+                displayAnalysis(novelTitle, bookData, groupData, chapterData);
+                
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        <strong>加载失败: ${error.message}</strong>
+                    </div>
+                `;
+            }
+        }
+        
+        // 显示分析结果
+        function displayAnalysis(novelTitle, bookData, groupData, chapterData) {
+            const container = document.getElementById('analysisContainer');
+            
+            let html = `
+                <h2>📊 《${novelTitle}》分析报告</h2>
+                
+                <div class="analysis-tabs">
+                    <div class="analysis-tab active" onclick="switchAnalysisTab('book')">📖 全书分析</div>
+                    <div class="analysis-tab" onclick="switchAnalysisTab('group')">📑 章组分析 (${groupData.length}组)</div>
+                    <div class="analysis-tab" onclick="switchAnalysisTab('chapter')">📄 章节分析 (${chapterData.length}章)</div>
+                </div>
+            `;
+            
+            // 全书分析
+            html += `<div id="book-analysis" class="analysis-content active">`;
+            if (bookData && bookData.analysis) {
+                const analysis = bookData.analysis;
+                console.log('全书分析数据:', analysis);
+                
+                html += `
+                    <div class="analysis-summary">
+                        <h3>📚 全书概要</h3>
+                        <p>${bookData.summary || bookData.book_summary || '暂无概要'}</p>
+                    </div>
+                    
+                    <div class="analysis-stats">
+                        <div class="stat-card">
+                            <div class="stat-value">${analysis.main_storylines || 'N/A'}</div>
+                            <div class="stat-label">主线数量</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${analysis.total_climax_points || 'N/A'}</div>
+                            <div class="stat-label">高潮点数量</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${analysis.character_count || 'N/A'}</div>
+                            <div class="stat-label">人物数量</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${analysis.rhythm_pattern || 'N/A'}</div>
+                            <div class="stat-label">节奏模式</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${analysis.protagonist_clarity || 'N/A'}</div>
+                            <div class="stat-label">主角鲜明度</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${analysis.scene_adaptability || 'N/A'}</div>
+                            <div class="stat-label">场景适应性</div>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-item">
+                        <h4>🏷️ 核心标签</h4>
+                        <div class="tags">
+                            ${(analysis.core_tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-item">
+                        <h4>📈 详细指标</h4>
+                        <p><strong>冲突密度:</strong> ${analysis.avg_conflict_density || 'N/A'}</p>
+                        <p><strong>人物关系复杂度:</strong> ${analysis.relationship_complexity || 'N/A'}</p>
+                        <p><strong>动作事件比例:</strong> ${analysis.action_event_ratio || 'N/A'}</p>
+                        <p><strong>特效需求:</strong> ${analysis.special_effects_need || 'N/A'}</p>
+                        <p><strong>情绪共鸣度:</strong> ${analysis.emotional_resonance || 'N/A'}</p>
+                        <p><strong>性别倾向:</strong> ${analysis.gender_orientation || 'N/A'}</p>
+                        <p><strong>目标年龄:</strong> ${analysis.target_age || 'N/A'}</p>
+                    </div>
+                    
+                    <div class="analysis-item">
+                        <h4>🔍 数据调试</h4>
+                        <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                            <h5>可用字段:</h5>
+                            <p>${Object.keys(analysis).join(', ')}</p>
+                            
+                            <h5>主要人物:</h5>
+                            <p>${JSON.stringify(analysis.main_characters || analysis.characters || 'N/A', null, 2)}</p>
+                            
+                            <h5>主题标签:</h5>
+                            <p>${JSON.stringify(analysis.themes || analysis.tags || analysis.keywords || 'N/A', null, 2)}</p>
+                            
+                            <details>
+                                <summary>完整分析数据</summary>
+                                <pre style="max-height: 300px; overflow-y: auto;">${JSON.stringify(analysis, null, 2)}</pre>
+                            </details>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `<div class="alert alert-error">暂无全书分析数据</div>`;
+            }
+            html += `</div>`;
+            
+            // 章组分析
+            html += `<div id="group-analysis" class="analysis-content">`;
+            if (groupData.length > 0) {
+                groupData.forEach((group, index) => {
+                    html += `
+                        <div class="analysis-item">
+                            <h4>📑 第${index + 1}组 (${group.group_id || 'N/A'})</h4>
+                            <p><strong>概要:</strong> ${group.summary || '暂无概要'}</p>
+                            ${group.analysis ? `
+                                <p><strong>分析:</strong> ${JSON.stringify(group.analysis, null, 2)}</p>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            } else {
+                html += `<div class="alert alert-error">暂无章组分析数据</div>`;
+            }
+            html += `</div>`;
+            
+            // 章节分析
+            html += `<div id="chapter-analysis" class="analysis-content">`;
+            if (chapterData.length > 0) {
+                chapterData.slice(0, 10).forEach((chapter, index) => { // 只显示前10章
+                    html += `
+                        <div class="analysis-item">
+                            <h4>📄 第${index + 1}章 (${chapter.segment_id || 'N/A'})</h4>
+                            <p><strong>概要:</strong> ${chapter.summary || '暂无概要'}</p>
+                            ${chapter.main_characters ? `
+                                <p><strong>主要人物:</strong> ${Array.isArray(chapter.main_characters) ? chapter.main_characters.join(', ') : chapter.main_characters}</p>
+                            ` : ''}
+                            ${chapter.tags ? `
+                                <div class="tags">
+                                    ${(Array.isArray(chapter.tags) ? chapter.tags : []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                if (chapterData.length > 10) {
+                    html += `<p style="text-align: center; color: #6c757d; margin-top: 20px;">显示前10章，共${chapterData.length}章</p>`;
+                }
+            } else {
+                html += `<div class="alert alert-error">暂无章节分析数据</div>`;
+            }
+            html += `</div>`;
+            
+            container.innerHTML = html;
+        }
+        
+        // 切换分析标签
+        function switchAnalysisTab(level) {
+            // 更新标签
+            document.querySelectorAll('.analysis-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 更新内容
+            document.querySelectorAll('.analysis-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${level}-analysis`).classList.add('active');
+            
+            currentAnalysisLevel = level;
+        }
+        
+        // 重新分析
+        async function retryAnalysis(novelId) {
+            if (!confirm('确定要重新分析这本小说吗？')) return;
+            
+            try {
+                const response = await fetch(`/api/novels/analyze/${novelId}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('success', result.message);
+                    loadNovels();
+                } else {
+                    showAlert('error', result.detail || '重新分析失败');
+                }
+            } catch (error) {
+                showAlert('error', '网络错误: ' + error.message);
+            }
+        }
+        
+        // 删除小说
+        async function deleteNovel(novelId, novelTitle) {
+            if (!confirm(`确定要删除《${novelTitle}》及其所有分析结果吗？此操作不可恢复！`)) return;
+            
+            try {
+                const response = await fetch(`/api/novels/${novelId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('success', '删除成功');
+                    loadNovels();
+                    // 如果当前显示的就是被删除的小说，清空分析页面
+                    if (currentNovelId === novelId) {
+                        document.getElementById('analysisContainer').innerHTML = `
+                            <div style="text-align: center; padding: 50px; color: #6c757d;">
+                                <h3>请先选择一本小说查看分析结果</h3>
+                                <p>从小说列表中选择已完成分析的小说</p>
+                            </div>
+                        `;
+                        currentNovelId = null;
+                    }
+                } else {
+                    showAlert('error', result.detail || '删除失败');
+                }
+            } catch (error) {
+                showAlert('error', '网络错误: ' + error.message);
+            }
+        }
+        
+        // 显示提示信息
+        function showAlert(type, message) {
+            const alertHtml = `
+                <div class="alert alert-${type === 'success' ? 'success' : 'error'}">
+                    <strong>${type === 'success' ? '✅' : '❌'} ${message}</strong>
+                </div>
+            `;
+            
+            // 在当前页面顶部显示
+            const activeTab = document.querySelector('.tab-content.active');
+            activeTab.insertAdjacentHTML('afterbegin', alertHtml);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                const alert = activeTab.querySelector('.alert');
+                if (alert) alert.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

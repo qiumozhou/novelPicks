@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    hostname: mongodb
+    container_name: novel_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d
+      - db:/data/db
+      - configdb:/data/configdb
+      - mongot:/data/mongot
+    restart: unless-stopped
+    networks:
+      - novel-network
+
+networks:
+  novel-network:
+    driver: bridge
+
+volumes:
+  db:
+  configdb:
+  mongot:
