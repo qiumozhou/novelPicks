@@ -284,8 +284,14 @@ class NovelAnalyzer:
         print(f"{'─'*50}")
         
         chapter_results = []
+        total_segments = len(segments)
         
         for i, segment in enumerate(segments):
+            # 更新详细进度
+            progress = 30 + int((i / total_segments) * 20)  # 30-50%
+            self.update_progress(novel_id, progress, f"分析章节 {i+1}/{total_segments}", 
+                               f"正在分析第{i+1}个段落，字数: {segment['word_count']:,}")
+            
             print(f"\n🔄 处理第 {i + 1}/{len(segments)} 个段落...")
             print(f"   📊 段落字数: {segment['word_count']:,} 字符")
             print(f"   📍 位置: {segment['start_pos']:,} - {segment['end_pos']:,}")
@@ -302,9 +308,15 @@ class NovelAnalyzer:
             
             # 调用模型
             print(f"   🤖 调用大模型API...")
+            self.update_progress(novel_id, progress, f"调用AI分析章节 {i+1}", 
+                               f"正在调用AI分析第{i+1}个段落...")
+            
             response = await self.call_llm(prompt, max_tokens=4000)
             if response:
                 print(f"   📝 解析模型响应...")
+                self.update_progress(novel_id, progress, f"解析AI响应 {i+1}", 
+                                   f"正在解析AI对第{i+1}个段落的分析结果...")
+                
                 result = self.extract_json_from_response(response)
                 if result:
                     # 添加实际的UUID和小说ID
@@ -324,14 +336,22 @@ class NovelAnalyzer:
                     
                     chapter_results.append(result)
                     print(f"   ✅ 段落 {i + 1} 分析完成")
+                    self.update_progress(novel_id, progress, f"章节 {i+1} 分析完成", 
+                                       f"第{i+1}个段落分析完成，已分析 {len(chapter_results)} 个段落")
                 else:
                     print(f"   ❌ 段落 {i + 1} JSON解析失败")
+                    self.update_progress(novel_id, progress, f"章节 {i+1} 解析失败", 
+                                       f"第{i+1}个段落的AI响应解析失败，正在重试...")
             else:
                 print(f"   ❌ 段落 {i + 1} 模型调用失败")
+                self.update_progress(novel_id, progress, f"章节 {i+1} 调用失败", 
+                                   f"第{i+1}个段落的AI调用失败，正在重试...")
             
             # 添加延迟
             if i < len(segments) - 1:
                 print(f"   ⏳ 等待 3 秒后继续...")
+                self.update_progress(novel_id, progress, f"等待处理下一章节", 
+                                   f"第{i+1}个段落处理完成，等待3秒后处理第{i+2}个段落...")
                 await asyncio.sleep(3)
         
         # 保存到MongoDB
@@ -360,8 +380,14 @@ class NovelAnalyzer:
         print(f"📊 章节已分为 {len(groups)} 组进行汇总")
         
         group_results = []
+        total_groups = len(groups)
         
         for i, group in enumerate(groups):
+            # 更新详细进度
+            progress = 60 + int((i / total_groups) * 15)  # 60-75%
+            self.update_progress(novel_id, progress, f"汇总组 {i+1}/{total_groups}", 
+                               f"正在汇总第{i+1}组，包含{len(group)}个段落")
+            
             print(f"\n🔄 处理第 {i + 1}/{len(groups)} 组...")
             print(f"   📊 组内段落数: {len(group)} 个")
             print(f"   📍 段落范围: {group[0].get('segment_number', 1)} - {group[-1].get('segment_number', len(group))}")
@@ -418,9 +444,14 @@ class NovelAnalyzer:
             
             # 调用模型
             print(f"   🤖 调用大模型API进行汇总...")
+            self.update_progress(novel_id, progress, f"调用AI汇总组 {i+1}", 
+                               f"正在调用AI汇总第{i+1}组，包含{len(group)}个段落...")
+            
             response = await self.call_llm(prompt, max_tokens=5000)
             if response:
                 print(f"   📝 解析模型响应...")
+                self.update_progress(novel_id, progress, f"解析AI汇总响应 {i+1}", 
+                                   f"正在解析AI对第{i+1}组的汇总结果...")
                 result = self.extract_json_from_response(response)
                 if result:
                     # 添加实际的UUID和小说ID
@@ -462,6 +493,10 @@ class NovelAnalyzer:
         print(f"\n📚 开始全书级整合分析")
         print(f"{'─'*50}")
         print(f"📊 基于 {len(group_results)} 个中层汇总结果进行全书分析")
+        
+        # 更新进度
+        self.update_progress(novel_id, 85, "开始全书分析", 
+                           f"正在整合{len(group_results)}个中层汇总结果进行全书分析...")
         
         # 准备content_refs
         content_refs = []
@@ -527,9 +562,14 @@ class NovelAnalyzer:
         
         # 调用模型
         print(f"🤖 调用大模型API进行全书分析...")
+        self.update_progress(novel_id, 90, "调用AI全书分析", 
+                           f"正在调用AI进行全书级整合分析，基于{len(group_results)}个中层汇总...")
+        
         response = await self.call_llm(prompt, max_tokens=6000)
         if response:
             print(f"📝 解析模型响应...")
+            self.update_progress(novel_id, 95, "解析AI全书响应", 
+                               f"正在解析AI的全书级分析结果...")
             result = self.extract_json_from_response(response)
             if result:
                 # 添加实际的UUID和小说ID

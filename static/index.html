@@ -310,32 +310,114 @@
         
         .progress-bar {
             width: 100%;
-            height: 20px;
-            background-color: #e9ecef;
-            border-radius: 10px;
+            height: 25px;
+            background-color: #f0f0f0;
+            border-radius: 12px;
             overflow: hidden;
-            position: relative;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #007bff, #28a745);
-            transition: width 0.3s ease;
-            border-radius: 10px;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A, #FFC107);
+            transition: width 0.5s ease;
+            position: relative;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
         
         .progress-text {
             text-align: center;
-            margin-top: 8px;
             font-weight: bold;
-            color: #007bff;
+            color: #333;
+            font-size: 16px;
+            margin-top: 5px;
         }
         
         .progress-details {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 8px;
-            margin: 15px 0;
+            margin-bottom: 15px;
+        }
+        
+        .progress-step, .progress-status, .progress-message, .progress-time {
+            display: flex;
+            margin-bottom: 8px;
+            align-items: flex-start;
+        }
+        
+        .step-label, .status-label, .message-label, .time-label {
+            font-weight: bold;
+            color: #666;
+            min-width: 80px;
+            margin-right: 10px;
+        }
+        
+        .step-value, .status-value, .message-value, .time-value {
+            color: #333;
+            flex: 1;
+            word-break: break-word;
+        }
+        
+        .status-processing {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        
+        .status-completed {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        
+        .status-failed {
+            color: #f44336;
+            font-weight: bold;
+        }
+        
+        .progress-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .btn-primary {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .progress-tips {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .progress-tips p {
+            margin: 0;
+            color: #1976d2;
+            font-size: 14px;
         }
         
         .progress-details p {
@@ -1127,7 +1209,7 @@
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.innerHTML = `
-                <div class="modal-content">
+                <div class="modal-content progress-modal">
                     <div class="modal-header">
                         <h3>📈 分析进度</h3>
                         <button class="close" onclick="closeModal()">&times;</button>
@@ -1140,14 +1222,35 @@
                             <div class="progress-text">${progress.progress}%</div>
                         </div>
                         <div class="progress-details">
-                            <p><strong>当前步骤:</strong> ${progress.current_step}</p>
-                            <p><strong>状态:</strong> ${progress.status}</p>
-                            <p><strong>消息:</strong> ${progress.message}</p>
-                            ${progress.timestamp ? `<p><strong>更新时间:</strong> ${new Date(progress.timestamp).toLocaleString('zh-CN')}</p>` : ''}
+                            <div class="progress-step">
+                                <span class="step-label">当前步骤:</span>
+                                <span class="step-value">${progress.current_step}</span>
+                            </div>
+                            <div class="progress-status">
+                                <span class="status-label">状态:</span>
+                                <span class="status-value status-${progress.status}">${progress.status}</span>
+                            </div>
+                            <div class="progress-message">
+                                <span class="message-label">详细消息:</span>
+                                <span class="message-value">${progress.message}</span>
+                            </div>
+                            ${progress.timestamp ? `
+                            <div class="progress-time">
+                                <span class="time-label">更新时间:</span>
+                                <span class="time-value">${new Date(progress.timestamp).toLocaleString('zh-CN')}</span>
+                            </div>
+                            ` : ''}
                         </div>
                         <div class="progress-actions">
-                            <button class="btn" onclick="refreshProgress('${novelId}')">🔄 刷新进度</button>
-                            <button class="btn" onclick="closeModal()">关闭</button>
+                            <button class="btn btn-primary" onclick="refreshProgress('${novelId}')">
+                                🔄 刷新进度
+                            </button>
+                            <button class="btn btn-secondary" onclick="closeModal()">
+                                关闭
+                            </button>
+                        </div>
+                        <div class="progress-tips">
+                            <p>💡 提示：分析过程可能需要几分钟，请耐心等待</p>
                         </div>
                     </div>
                 </div>
