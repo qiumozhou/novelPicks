@@ -425,6 +425,101 @@
             font-size: 14px;
         }
         
+        /* 分页样式 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .pagination-btn {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            color: #333;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .pagination-btn:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+        
+        .pagination-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination-ellipsis {
+            padding: 8px 4px;
+            color: #6c757d;
+            font-weight: bold;
+        }
+        
+        .pagination-info {
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        #chapter-pagination-container {
+            margin-top: 20px;
+        }
+        
+        #chapter-list {
+            min-height: 200px;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .pagination-settings {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .pagination-settings label {
+            font-weight: bold;
+            color: #495057;
+            margin: 0;
+        }
+        
+        .pagination-settings select {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .pagination-settings select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        
         .progress-details p {
             margin: 5px 0;
             color: #495057;
@@ -1076,31 +1171,157 @@
             // 章节分析
             html += `<div id="chapter-analysis" class="analysis-content">`;
             if (chapterData.length > 0) {
-                chapterData.slice(0, 10).forEach((chapter, index) => { // 只显示前10章
-                    html += `
-                        <div class="analysis-item">
-                            <h4>📄 第${index + 1}章 (${chapter.segment_id || 'N/A'})</h4>
-                            <p><strong>概要:</strong> ${chapter.summary || '暂无概要'}</p>
-                            ${chapter.main_characters ? `
-                                <p><strong>主要人物:</strong> ${formatCharacters(chapter.main_characters)}</p>
-                            ` : ''}
-                            ${chapter.tags ? `
-                                <div class="tags">
-                                    ${(Array.isArray(chapter.tags) ? chapter.tags : []).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                                </div>
-                            ` : ''}
-                        </div>
-                    `;
-                });
-                if (chapterData.length > 10) {
-                    html += `<p style="text-align: center; color: #6c757d; margin-top: 20px;">显示前10章，共${chapterData.length}章</p>`;
-                }
+            // 章节分页容器
+            html += `<div id="chapter-pagination-container">`;
+            html += `<div class="pagination-controls">
+                <div class="pagination-settings">
+                    <label for="chapters-per-page">每页显示:</label>
+                    <select id="chapters-per-page" onchange="changeChaptersPerPage(this.value)">
+                        <option value="3">3章</option>
+                        <option value="5" selected>5章</option>
+                        <option value="10">10章</option>
+                        <option value="20">20章</option>
+                    </select>
+                </div>
+            </div>`;
+            html += `<div id="chapter-list"></div>`;
+            html += `<div id="chapter-pagination"></div>`;
+            html += `</div>`;
             } else {
                 html += `<div class="alert alert-error">暂无章节分析数据</div>`;
             }
             html += `</div>`;
             
             container.innerHTML = html;
+            
+            // 初始化章节分页
+            if (chapterData.length > 0) {
+                initChapterPagination(chapterData);
+            }
+        }
+        
+        // 章节分页相关变量
+        let currentChapterPage = 1;
+        let chaptersPerPage = 5;
+        let allChapterData = [];
+        
+        // 初始化章节分页
+        function initChapterPagination(chapterData) {
+            allChapterData = chapterData;
+            currentChapterPage = 1;
+            renderChapterPage();
+            renderChapterPagination();
+        }
+        
+        // 渲染章节页面
+        function renderChapterPage() {
+            const chapterList = document.getElementById('chapter-list');
+            if (!chapterList) return;
+            
+            const startIndex = (currentChapterPage - 1) * chaptersPerPage;
+            const endIndex = startIndex + chaptersPerPage;
+            const currentChapters = allChapterData.slice(startIndex, endIndex);
+            
+            let html = '';
+            currentChapters.forEach((chapter, index) => {
+                const globalIndex = startIndex + index;
+                html += `
+                    <div class="analysis-item">
+                        <h4>📄 第${globalIndex + 1}章 (${chapter.segment_id || 'N/A'})</h4>
+                        <p><strong>概要:</strong> ${chapter.summary || '暂无概要'}</p>
+                        ${chapter.main_characters ? `
+                            <p><strong>主要人物:</strong> ${formatCharacters(chapter.main_characters)}</p>
+                        ` : ''}
+                        ${chapter.tags ? `
+                            <div class="tags">
+                                ${(Array.isArray(chapter.tags) ? chapter.tags : []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            chapterList.innerHTML = html;
+        }
+        
+        // 渲染章节分页控件
+        function renderChapterPagination() {
+            const paginationContainer = document.getElementById('chapter-pagination');
+            if (!paginationContainer) return;
+            
+            const totalPages = Math.ceil(allChapterData.length / chaptersPerPage);
+            
+            if (totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+            
+            let html = '<div class="pagination">';
+            
+            // 上一页按钮
+            if (currentChapterPage > 1) {
+                html += `<button class="pagination-btn" onclick="changeChapterPage(${currentChapterPage - 1})">上一页</button>`;
+            }
+            
+            // 页码按钮
+            const startPage = Math.max(1, currentChapterPage - 2);
+            const endPage = Math.min(totalPages, currentChapterPage + 2);
+            
+            if (startPage > 1) {
+                html += `<button class="pagination-btn" onclick="changeChapterPage(1)">1</button>`;
+                if (startPage > 2) {
+                    html += `<span class="pagination-ellipsis">...</span>`;
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const isActive = i === currentChapterPage ? 'active' : '';
+                html += `<button class="pagination-btn ${isActive}" onclick="changeChapterPage(${i})">${i}</button>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="pagination-ellipsis">...</span>`;
+                }
+                html += `<button class="pagination-btn" onclick="changeChapterPage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            // 下一页按钮
+            if (currentChapterPage < totalPages) {
+                html += `<button class="pagination-btn" onclick="changeChapterPage(${currentChapterPage + 1})">下一页</button>`;
+            }
+            
+            html += '</div>';
+            
+            // 添加页面信息
+            const startIndex = (currentChapterPage - 1) * chaptersPerPage + 1;
+            const endIndex = Math.min(currentChapterPage * chaptersPerPage, allChapterData.length);
+            html += `<div class="pagination-info">显示第 ${startIndex}-${endIndex} 章，共 ${allChapterData.length} 章</div>`;
+            
+            paginationContainer.innerHTML = html;
+        }
+        
+        // 切换章节页面
+        function changeChapterPage(page) {
+            if (page < 1 || page > Math.ceil(allChapterData.length / chaptersPerPage)) return;
+            
+            currentChapterPage = page;
+            renderChapterPage();
+            renderChapterPagination();
+            
+            // 滚动到顶部
+            const chapterAnalysis = document.getElementById('chapter-analysis');
+            if (chapterAnalysis) {
+                chapterAnalysis.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        
+        // 改变每页显示数量
+        function changeChaptersPerPage(newPerPage) {
+            chaptersPerPage = parseInt(newPerPage);
+            currentChapterPage = 1; // 重置到第一页
+            renderChapterPage();
+            renderChapterPagination();
         }
         
         // 切换分析标签
