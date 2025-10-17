@@ -529,6 +529,47 @@
             margin-bottom: 20px;
         }
         
+        /* 搜索框样式 */
+        .novel-search-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            transition: border-color 0.3s ease;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #68d391;
+            box-shadow: 0 0 0 3px rgba(104, 211, 145, 0.1);
+        }
+        
+        .search-result-info {
+            color: #4a5568;
+            font-size: 14px;
+            padding: 8px 12px;
+            background: #f7fafc;
+            border-radius: 6px;
+            border-left: 4px solid #68d391;
+        }
+        
         .pagination-controls {
             display: flex;
             justify-content: space-between;
@@ -670,7 +711,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📚 小说分析系统</h1>
+            <h1>📚 小说选品系统</h1>
             <p>基于大模型的小说分层结构化分析平台</p>
         </div>
         
@@ -904,7 +945,12 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    displayNovels(data.novels);
+                    // 确保novels数组存在
+                    const novels = data.novels || data || [];
+                    if (!Array.isArray(novels)) {
+                        throw new Error('API返回数据格式错误');
+                    }
+                    displayNovels(novels);
                 } else {
                     throw new Error(data.detail || '加载失败');
                 }
@@ -921,6 +967,8 @@
         let currentNovelPage = 1;
         let novelsPerPage = 6;
         let allNovelsData = [];
+        let filteredNovelsData = [];
+        let searchKeyword = '';
         
         // 显示小说列表
         function displayNovels(novels) {
@@ -936,9 +984,15 @@
                 return;
             }
             
-            // 初始化小说分页
+            // 初始化小说数据
             allNovelsData = novels;
+            filteredNovelsData = novels;
             currentNovelPage = 1;
+            
+            // 添加搜索框
+            addSearchBox();
+            
+            // 渲染小说列表
             renderNovelPage();
             renderNovelPagination();
         }
@@ -948,7 +1002,7 @@
             const container = document.getElementById('novelsList');
             const startIndex = (currentNovelPage - 1) * novelsPerPage;
             const endIndex = startIndex + novelsPerPage;
-            const currentNovels = allNovelsData.slice(startIndex, endIndex);
+            const currentNovels = filteredNovelsData.slice(startIndex, endIndex);
             
             if (currentNovels.length === 0) {
                 container.innerHTML = `
@@ -1030,7 +1084,7 @@
         // 渲染小说分页控件
         function renderNovelPagination() {
             const container = document.getElementById('novelsList');
-            const totalPages = Math.ceil(allNovelsData.length / novelsPerPage);
+            const totalPages = Math.ceil(filteredNovelsData.length / novelsPerPage);
             
             if (totalPages <= 1) {
                 // 移除现有的分页控件
@@ -1085,8 +1139,8 @@
             
             // 添加页面信息
             const startIndex = (currentNovelPage - 1) * novelsPerPage + 1;
-            const endIndex = Math.min(currentNovelPage * novelsPerPage, allNovelsData.length);
-            html += `<div class="pagination-info">显示第 ${startIndex}-${endIndex} 本，共 ${allNovelsData.length} 本小说</div>`;
+            const endIndex = Math.min(currentNovelPage * novelsPerPage, filteredNovelsData.length);
+            html += `<div class="pagination-info">显示第 ${startIndex}-${endIndex} 本，共 ${filteredNovelsData.length} 本小说</div>`;
             
             paginationContainer.innerHTML = html;
             
@@ -1100,7 +1154,7 @@
         
         // 切换小说页面
         function changeNovelPage(page) {
-            if (page < 1 || page > Math.ceil(allNovelsData.length / novelsPerPage)) return;
+            if (page < 1 || page > Math.ceil(filteredNovelsData.length / novelsPerPage)) return;
             
             currentNovelPage = page;
             renderNovelPage();
@@ -1113,6 +1167,84 @@
                     novelsList.scrollIntoView({ behavior: 'smooth' });
                 }
             });
+        }
+        
+        // 添加搜索框
+        function addSearchBox() {
+            const container = document.getElementById('novelsList');
+            
+            // 检查是否已经存在搜索框
+            if (container.querySelector('#novel-search-box')) {
+                return;
+            }
+            
+            const searchBox = document.createElement('div');
+            searchBox.id = 'novel-search-box';
+            searchBox.className = 'novel-search-container';
+            searchBox.innerHTML = `
+                <div class="search-box">
+                    <input type="text" id="novel-search-input" placeholder="搜索小说名称..." 
+                           value="${searchKeyword}" onkeyup="searchNovels(this.value)">
+                    <button class="btn btn-secondary" onclick="clearSearch()">清除</button>
+                </div>
+                <div class="search-info" id="search-info"></div>
+            `;
+            
+            // 在容器顶部插入搜索框
+            container.insertBefore(searchBox, container.firstChild);
+        }
+        
+        // 搜索小说
+        function searchNovels(keyword) {
+            searchKeyword = keyword.trim();
+            
+            if (searchKeyword === '') {
+                // 显示所有小说
+                filteredNovelsData = allNovelsData;
+            } else {
+                // 模糊搜索
+                filteredNovelsData = allNovelsData.filter(novel => {
+                    const title = (novel.title || '').toLowerCase();
+                    return title.includes(searchKeyword.toLowerCase());
+                });
+            }
+            
+            // 重置到第一页
+            currentNovelPage = 1;
+            
+            // 更新搜索信息
+            updateSearchInfo();
+            
+            // 重新渲染
+            renderNovelPage();
+            renderNovelPagination();
+        }
+        
+        // 更新搜索信息
+        function updateSearchInfo() {
+            const searchInfo = document.getElementById('search-info');
+            if (!searchInfo) return;
+            
+            if (searchKeyword === '') {
+                searchInfo.innerHTML = '';
+            } else {
+                const totalCount = allNovelsData.length;
+                const filteredCount = filteredNovelsData.length;
+                searchInfo.innerHTML = `
+                    <div class="search-result-info">
+                        搜索 "${searchKeyword}" 找到 ${filteredCount} 本小说（共 ${totalCount} 本）
+                    </div>
+                `;
+            }
+        }
+        
+        // 清除搜索
+        function clearSearch() {
+            const searchInput = document.getElementById('novel-search-input');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            searchNovels('');
         }
         
         // 获取状态文本
