@@ -199,7 +199,16 @@ async def get_analysis_progress(novel_id: str):
         "current_step": "",
         "message": "未找到分析进度"
     })
+    print(f"[API] 获取进度: {novel_id} -> {progress}", flush=True)  # 调试信息
     return progress
+
+@app.get("/api/debug/progress")
+async def debug_progress():
+    """调试进度数据"""
+    return {
+        "total_progress": len(analysis_progress),
+        "progress_data": analysis_progress
+    }
 
 @app.post("/api/novels/upload", response_model=AnalysisResponse)
 async def upload_novel(

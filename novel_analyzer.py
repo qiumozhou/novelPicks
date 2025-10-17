@@ -596,15 +596,18 @@ class NovelAnalyzer:
     
     def update_progress(self, novel_id: str, progress: int, step: str, message: str = ""):
         """更新分析进度"""
-        from main import analysis_progress
-        analysis_progress[novel_id] = {
-            "status": "processing",
-            "progress": progress,
-            "current_step": step,
-            "message": message,
-            "timestamp": datetime.now().isoformat()
-        }
-        print(f"[PROGRESS] {novel_id}: {progress}% - {step} - {message}", flush=True)
+        try:
+            from main import analysis_progress
+            analysis_progress[novel_id] = {
+                "status": "processing",
+                "progress": progress,
+                "current_step": step,
+                "message": message,
+                "timestamp": datetime.now().isoformat()
+            }
+            print(f"[PROGRESS] {novel_id}: {progress}% - {step} - {message}", flush=True)
+        except Exception as e:
+            print(f"[PROGRESS ERROR] 更新进度失败: {e}", flush=True)
 
     async def analyze_novel_async(self, novel_id: str, file_path: str):
         """异步分析小说的完整流程"""

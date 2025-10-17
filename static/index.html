@@ -407,6 +407,11 @@
             color: white;
         }
         
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        
         .progress-tips {
             background: #e3f2fd;
             padding: 10px;
@@ -1245,6 +1250,9 @@
                             <button class="btn btn-primary" onclick="refreshProgress('${novelId}')">
                                 🔄 刷新进度
                             </button>
+                            <button class="btn btn-info" onclick="debugProgress('${novelId}')">
+                                🔍 调试数据
+                            </button>
                             <button class="btn btn-secondary" onclick="closeModal()">
                                 关闭
                             </button>
@@ -1273,22 +1281,27 @@
                 const response = await fetch(`/api/novels/${novelId}/progress`);
                 const progress = await response.json();
                 
+                console.log('进度更新:', progress); // 调试信息
+                
                 if (response.ok) {
                     // 更新进度条
                     const progressFill = document.querySelector('.progress-fill');
                     const progressText = document.querySelector('.progress-text');
-                    const currentStep = document.querySelector('.progress-details p:nth-child(1)');
-                    const status = document.querySelector('.progress-details p:nth-child(2)');
-                    const message = document.querySelector('.progress-details p:nth-child(3)');
-                    const timestamp = document.querySelector('.progress-details p:nth-child(4)');
+                    const stepValue = document.querySelector('.step-value');
+                    const statusValue = document.querySelector('.status-value');
+                    const messageValue = document.querySelector('.message-value');
+                    const timeValue = document.querySelector('.time-value');
                     
                     if (progressFill) progressFill.style.width = `${progress.progress}%`;
                     if (progressText) progressText.textContent = `${progress.progress}%`;
-                    if (currentStep) currentStep.innerHTML = `<strong>当前步骤:</strong> ${progress.current_step}`;
-                    if (status) status.innerHTML = `<strong>状态:</strong> ${progress.status}`;
-                    if (message) message.innerHTML = `<strong>消息:</strong> ${progress.message}`;
-                    if (timestamp && progress.timestamp) {
-                        timestamp.innerHTML = `<strong>更新时间:</strong> ${new Date(progress.timestamp).toLocaleString('zh-CN')}`;
+                    if (stepValue) stepValue.textContent = progress.current_step;
+                    if (statusValue) {
+                        statusValue.textContent = progress.status;
+                        statusValue.className = `status-value status-${progress.status}`;
+                    }
+                    if (messageValue) messageValue.textContent = progress.message;
+                    if (timeValue && progress.timestamp) {
+                        timeValue.textContent = new Date(progress.timestamp).toLocaleString('zh-CN');
                     }
                     
                     // 如果分析完成，停止刷新并关闭模态框
@@ -1305,6 +1318,27 @@
                 }
             } catch (error) {
                 console.error('刷新进度失败:', error);
+            }
+        }
+        
+        // 调试进度数据
+        async function debugProgress(novelId) {
+            try {
+                // 获取当前进度
+                const progressResponse = await fetch(`/api/novels/${novelId}/progress`);
+                const progress = await progressResponse.json();
+                
+                // 获取所有进度数据
+                const debugResponse = await fetch('/api/debug/progress');
+                const debugData = await debugResponse.json();
+                
+                console.log('当前进度:', progress);
+                console.log('所有进度数据:', debugData);
+                
+                alert(`调试信息:\n当前进度: ${JSON.stringify(progress, null, 2)}\n\n所有数据: ${JSON.stringify(debugData, null, 2)}`);
+            } catch (error) {
+                console.error('调试失败:', error);
+                alert('调试失败: ' + error.message);
             }
         }
         
