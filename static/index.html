@@ -692,6 +692,28 @@
             return tags.map(tag => `<span class="tag">${tag}</span>`).join('');
         }
         
+        // 格式化人物数据，处理对象数组
+        function formatCharacters(characters) {
+            if (!characters) return 'N/A';
+            
+            if (Array.isArray(characters)) {
+                return characters.map(char => {
+                    if (typeof char === 'string') {
+                        return char;
+                    } else if (typeof char === 'object' && char !== null) {
+                        // 尝试提取人物名称
+                        return char.name || char.character || char.title || JSON.stringify(char);
+                    } else {
+                        return String(char);
+                    }
+                }).join(', ');
+            } else if (typeof characters === 'string') {
+                return characters;
+            } else {
+                return String(characters);
+            }
+        }
+        
         // 查看分析结果
         async function viewAnalysis(novelId, novelTitle) {
             console.log('查看分析:', novelId, novelTitle);
@@ -867,7 +889,7 @@
                             <h4>📄 第${index + 1}章 (${chapter.segment_id || 'N/A'})</h4>
                             <p><strong>概要:</strong> ${chapter.summary || '暂无概要'}</p>
                             ${chapter.main_characters ? `
-                                <p><strong>主要人物:</strong> ${Array.isArray(chapter.main_characters) ? chapter.main_characters.join(', ') : chapter.main_characters}</p>
+                                <p><strong>主要人物:</strong> ${formatCharacters(chapter.main_characters)}</p>
                             ` : ''}
                             ${chapter.tags ? `
                                 <div class="tags">
