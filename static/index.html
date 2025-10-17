@@ -121,13 +121,14 @@
             cursor: pointer;
             font-size: 16px;
             font-weight: 500;
-            transition: all 0.3s;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
             margin: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            will-change: transform;
         }
         
         .btn:hover {
-            transform: translateY(-2px);
+            transform: translateY(-2px) translateZ(0);
             box-shadow: 0 8px 16px rgba(168, 230, 207, 0.4);
             background: linear-gradient(135deg, #b8f0d1 0%, #98e0d0 100%);
         }
@@ -167,6 +168,22 @@
         .novel-card {
             will-change: transform;
             transform: translateZ(0);
+        }
+        
+        /* 优化动画性能 */
+        * {
+            box-sizing: border-box;
+        }
+        
+        /* 减少重绘的优化 */
+        .analysis-item {
+            contain: layout style paint;
+        }
+        
+        /* 优化滚动性能 */
+        .analysis-content {
+            contain: layout;
+            overflow: auto;
         }
         
         .novel-title {
@@ -352,8 +369,8 @@
         }
         
         @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0% { transform: translateX(-100%) translateZ(0); }
+            100% { transform: translateX(100%) translateZ(0); }
         }
         
         .progress-text {
@@ -704,6 +721,16 @@
         document.addEventListener('DOMContentLoaded', function() {
             initializeEventListeners();
             loadNovels();
+            
+            // 使用事件委托优化性能
+            document.addEventListener('click', function(e) {
+                if (e.target.matches('.pagination-btn')) {
+                    const page = parseInt(e.target.textContent);
+                    if (!isNaN(page)) {
+                        changeChapterPage(page);
+                    }
+                }
+            });
         });
         
         // 事件监听器初始化
@@ -1228,7 +1255,7 @@
             renderChapterPagination();
         }
         
-        // 渲染章节页面
+        // 渲染章节页面 - 使用文档片段优化性能
         function renderChapterPage() {
             const chapterList = document.getElementById('chapter-list');
             if (!chapterList) return;
@@ -1237,26 +1264,31 @@
             const endIndex = startIndex + chaptersPerPage;
             const currentChapters = allChapterData.slice(startIndex, endIndex);
             
-            let html = '';
+            // 使用文档片段减少DOM重绘
+            const fragment = document.createDocumentFragment();
+            
             currentChapters.forEach((chapter, index) => {
                 const globalIndex = startIndex + index;
-                html += `
-                    <div class="analysis-item">
-                        <h4>📄 第${globalIndex + 1}章 (${chapter.segment_id || 'N/A'})</h4>
-                        <p><strong>概要:</strong> ${chapter.summary || '暂无概要'}</p>
-                        ${chapter.main_characters ? `
-                            <p><strong>主要人物:</strong> ${formatCharacters(chapter.main_characters)}</p>
-                        ` : ''}
-                        ${chapter.tags ? `
-                            <div class="tags">
-                                ${(Array.isArray(chapter.tags) ? chapter.tags : []).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
+                const item = document.createElement('div');
+                item.className = 'analysis-item';
+                item.innerHTML = `
+                    <h4>📄 第${globalIndex + 1}章 (${chapter.segment_id || 'N/A'})</h4>
+                    <p><strong>概要:</strong> ${chapter.summary || '暂无概要'}</p>
+                    ${chapter.main_characters ? `
+                        <p><strong>主要人物:</strong> ${formatCharacters(chapter.main_characters)}</p>
+                    ` : ''}
+                    ${chapter.tags ? `
+                        <div class="tags">
+                            ${(Array.isArray(chapter.tags) ? chapter.tags : []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
+                    ` : ''}
                 `;
+                fragment.appendChild(item);
             });
             
-            chapterList.innerHTML = html;
+            // 一次性更新DOM
+            chapterList.innerHTML = '';
+            chapterList.appendChild(fragment);
         }
         
         // 渲染章节分页控件
@@ -1316,7 +1348,7 @@
             paginationContainer.innerHTML = html;
         }
         
-        // 切换章节页面
+        // 切换章节页面 - 使用requestAnimationFrame优化滚动
         function changeChapterPage(page) {
             if (page < 1 || page > Math.ceil(allChapterData.length / chaptersPerPage)) return;
             
@@ -1324,11 +1356,13 @@
             renderChapterPage();
             renderChapterPagination();
             
-            // 滚动到顶部
-            const chapterAnalysis = document.getElementById('chapter-analysis');
-            if (chapterAnalysis) {
-                chapterAnalysis.scrollIntoView({ behavior: 'smooth' });
-            }
+            // 使用requestAnimationFrame优化滚动性能
+            requestAnimationFrame(() => {
+                const chapterAnalysis = document.getElementById('chapter-analysis');
+                if (chapterAnalysis) {
+                    chapterAnalysis.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
         }
         
         // 改变每页显示数量
@@ -1502,13 +1536,41 @@
             
             document.body.appendChild(modal);
             
-            // 自动刷新进度
+            // 自动刷新进度 - 使用节流优化
+            const throttledRefresh = throttle(refreshProgress, 1000);
             const refreshInterval = setInterval(() => {
-                refreshProgress(novelId);
+                throttledRefresh(novelId);
             }, 2000);
             
             // 存储刷新间隔ID，用于清理
             modal.refreshInterval = refreshInterval;
+        }
+        
+        // 防抖函数
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        // 节流函数
+        function throttle(func, limit) {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
         }
         
         // 刷新进度
