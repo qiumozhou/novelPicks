@@ -9,11 +9,11 @@ import json
 import time
 import re
 import uuid
+import asyncio
 from datetime import datetime
 from pathlib import Path
 import requests
 from typing import Dict, Any, Optional, List
-import asyncio
 
 class NovelAnalyzer:
     """小说分层结构化分析工具 - 支持MongoDB存储"""
@@ -183,8 +183,8 @@ class NovelAnalyzer:
         print(f"共分割为 {len(segments)} 个段落")
         return segments
     
-    def call_llm(self, prompt: str, max_tokens: int = 6000) -> Optional[str]:
-        """调用大模型API"""
+    async def call_llm(self, prompt: str, max_tokens: int = 6000) -> Optional[str]:
+        """调用大模型API - 异步版本"""
         headers = {
             "Authorization": f"Bearer {self.model_config['api_key']}",
             "Content-Type": "application/json"
@@ -202,11 +202,17 @@ class NovelAnalyzer:
         for attempt in range(self.model_config["max_retries"]):
             try:
                 print(f"   🔄 调用模型 (尝试 {attempt + 1}/{self.model_config['max_retries']})...")
-                response = requests.post(
-                    f"{self.model_config['base_url']}/chat/completions",
-                    headers=headers,
-                    json=data,
-                    timeout=self.model_config["timeout"]
+                
+                # 使用asyncio在线程池中运行requests
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: requests.post(
+                        f"{self.model_config['base_url']}/chat/completions",
+                        headers=headers,
+                        json=data,
+                        timeout=self.model_config["timeout"]
+                    )
                 )
                 
                 if response.status_code == 200:
@@ -228,7 +234,7 @@ class NovelAnalyzer:
             if attempt < self.model_config["max_retries"] - 1:
                 wait_time = (attempt + 1) * 3
                 print(f"   ⏳ 等待 {wait_time} 秒后重试...")
-                time.sleep(wait_time)
+                await asyncio.sleep(wait_time)
         
         print("   ❌ 所有重试均失败")
         return None
@@ -296,7 +302,7 @@ class NovelAnalyzer:
             
             # 调用模型
             print(f"   🤖 调用大模型API...")
-            response = self.call_llm(prompt, max_tokens=4000)
+            response = await self.call_llm(prompt, max_tokens=4000)
             if response:
                 print(f"   📝 解析模型响应...")
                 result = self.extract_json_from_response(response)
@@ -326,7 +332,7 @@ class NovelAnalyzer:
             # 添加延迟
             if i < len(segments) - 1:
                 print(f"   ⏳ 等待 3 秒后继续...")
-                time.sleep(3)
+                await asyncio.sleep(3)
         
         # 保存到MongoDB
         if chapter_results:
@@ -412,7 +418,7 @@ class NovelAnalyzer:
             
             # 调用模型
             print(f"   🤖 调用大模型API进行汇总...")
-            response = self.call_llm(prompt, max_tokens=5000)
+            response = await self.call_llm(prompt, max_tokens=5000)
             if response:
                 print(f"   📝 解析模型响应...")
                 result = self.extract_json_from_response(response)
@@ -437,7 +443,7 @@ class NovelAnalyzer:
             # 添加延迟
             if i < len(groups) - 1:
                 print(f"   ⏳ 等待 5 秒后继续...")
-                time.sleep(5)
+                await asyncio.sleep(5)
         
         # 保存到MongoDB
         if group_results:
@@ -521,7 +527,7 @@ class NovelAnalyzer:
         
         # 调用模型
         print(f"🤖 调用大模型API进行全书分析...")
-        response = self.call_llm(prompt, max_tokens=6000)
+        response = await self.call_llm(prompt, max_tokens=6000)
         if response:
             print(f"📝 解析模型响应...")
             result = self.extract_json_from_response(response)

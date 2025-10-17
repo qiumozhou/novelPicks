@@ -41,6 +41,25 @@ analyzer = NovelAnalyzer(db)
 # 分析进度存储
 analysis_progress = {}
 
+async def run_analysis_task(novel_id: str, file_path: str):
+    """运行分析任务的包装函数，确保不阻塞主事件循环"""
+    try:
+        print(f"[TASK] 开始执行分析任务: {novel_id}", flush=True)
+        await analyzer.analyze_novel_async(novel_id, file_path)
+        print(f"[TASK] 分析任务完成: {novel_id}", flush=True)
+    except Exception as e:
+        print(f"[TASK] 分析任务失败: {novel_id} - {str(e)}", flush=True)
+        # 更新进度为失败
+        analysis_progress[novel_id] = {
+            "status": "failed",
+            "progress": 0,
+            "current_step": "失败",
+            "message": f"分析失败: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }
+        # 更新数据库状态
+        await db.update_novel_status(novel_id, "failed")
+
 # 创建static目录
 static_dir = Path("static")
 static_dir.mkdir(exist_ok=True)
@@ -225,7 +244,7 @@ async def upload_novel(
         
         # 后台运行分析任务
         print(f"[START] 启动后台分析任务: {novel_id}", flush=True)
-        background_tasks.add_task(analyzer.analyze_novel_async, novel_id, file_path)
+        background_tasks.add_task(run_analysis_task, novel_id, file_path)
         print(f"[QUEUE] 分析任务已添加到后台队列", flush=True)
         
         return AnalysisResponse(
