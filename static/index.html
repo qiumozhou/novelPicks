@@ -570,6 +570,27 @@
             border-left: 4px solid #68d391;
         }
         
+        /* 无搜索结果样式 */
+        #novels-container h3 {
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        
+        #novels-container p {
+            color: #718096;
+            margin: 5px 0;
+        }
+        
+        #novels-container a {
+            color: #68d391;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        #novels-container a:hover {
+            text-decoration: underline;
+        }
+        
         .pagination-controls {
             display: flex;
             justify-content: space-between;
@@ -983,9 +1004,9 @@
             addSearchBox();
             
             if (novels.length === 0) {
-                // 清空容器并显示空状态
-                container.innerHTML = '';
+                // 显示空状态，但保留搜索框
                 const emptyDiv = document.createElement('div');
+                emptyDiv.id = 'novels-container';
                 emptyDiv.style.cssText = 'text-align: center; padding: 50px; color: #6c757d;';
                 emptyDiv.innerHTML = `
                     <h3>暂无小说</h3>
@@ -1008,12 +1029,31 @@
             const currentNovels = filteredNovelsData.slice(startIndex, endIndex);
             
             if (currentNovels.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 50px; color: #6c757d;">
+                // 移除旧的小说容器，但保留搜索框
+                const oldContainer = container.querySelector('#novels-container');
+                if (oldContainer) {
+                    oldContainer.remove();
+                }
+                
+                // 显示无结果提示，但不覆盖搜索框
+                const emptyDiv = document.createElement('div');
+                emptyDiv.id = 'novels-container';
+                emptyDiv.style.cssText = 'text-align: center; padding: 50px; color: #6c757d;';
+                
+                if (searchKeyword === '') {
+                    emptyDiv.innerHTML = `
                         <h3>暂无小说</h3>
                         <p>请先上传小说文件</p>
-                    </div>
-                `;
+                    `;
+                } else {
+                    emptyDiv.innerHTML = `
+                        <h3>未找到匹配的小说</h3>
+                        <p>搜索关键词: "${searchKeyword}"</p>
+                        <p>请尝试其他关键词或<a href="javascript:clearSearch()">清除搜索</a></p>
+                    `;
+                }
+                
+                container.appendChild(emptyDiv);
                 return;
             }
             
