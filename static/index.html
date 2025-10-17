@@ -163,6 +163,12 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.08);
         }
         
+        /* 性能优化：使用will-change和transform3d */
+        .novel-card {
+            will-change: transform;
+            transform: translateZ(0);
+        }
+        
         .novel-title {
             font-size: 1.4rem;
             font-weight: 600;
