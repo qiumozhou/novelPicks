@@ -303,6 +303,107 @@
             color: #721c24;
         }
         
+        /* 进度条样式 */
+        .progress-container {
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #28a745);
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 8px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .progress-details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .progress-details p {
+            margin: 5px 0;
+            color: #495057;
+        }
+        
+        .progress-actions {
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        .progress-actions .btn {
+            margin: 0 5px;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #495057;
+        }
+        
+        .close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6c757d;
+        }
+        
+        .close:hover {
+            color: #495057;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
         .input-group {
             margin-bottom: 20px;
         }
@@ -618,16 +719,21 @@
                             🆔 ID: ${novelId}
                         </div>
                         <div>
-                            ${novel.status === 'completed' ? `
-                                <button class="btn" onclick="viewAnalysis('${novelId}', '${novelTitle}')">
-                                    📊 查看分析
-                                </button>
-                            ` : ''}
-                            ${novel.status === 'failed' || novel.status === 'pending' ? `
-                                <button class="btn" onclick="retryAnalysis('${novelId}')">
-                                    🔄 重新分析
-                                </button>
-                            ` : ''}
+                        ${novel.status === 'completed' ? `
+                            <button class="btn" onclick="viewAnalysis('${novelId}', '${novelTitle}')">
+                                📊 查看分析
+                            </button>
+                        ` : ''}
+                        ${novel.status === 'processing' ? `
+                            <button class="btn" onclick="showProgress('${novelId}')">
+                                📈 查看进度
+                            </button>
+                        ` : ''}
+                        ${novel.status === 'failed' || novel.status === 'pending' ? `
+                            <button class="btn" onclick="retryAnalysis('${novelId}')">
+                                🔄 重新分析
+                            </button>
+                        ` : ''}
                             <button class="btn btn-danger" onclick="deleteNovel('${novelId}', '${novelTitle}')">
                                 🗑️ 删除
                             </button>
@@ -998,6 +1104,116 @@
                 const alert = activeTab.querySelector('.alert');
                 if (alert) alert.remove();
             }, 3000);
+        }
+        
+        // 显示分析进度
+        async function showProgress(novelId) {
+            try {
+                const response = await fetch(`/api/novels/${novelId}/progress`);
+                const progress = await response.json();
+                
+                if (response.ok) {
+                    showProgressModal(novelId, progress);
+                } else {
+                    showAlert('error', '获取进度失败');
+                }
+            } catch (error) {
+                showAlert('error', '网络错误: ' + error.message);
+            }
+        }
+        
+        // 显示进度模态框
+        function showProgressModal(novelId, progress) {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📈 分析进度</h3>
+                        <button class="close" onclick="closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progress.progress}%"></div>
+                            </div>
+                            <div class="progress-text">${progress.progress}%</div>
+                        </div>
+                        <div class="progress-details">
+                            <p><strong>当前步骤:</strong> ${progress.current_step}</p>
+                            <p><strong>状态:</strong> ${progress.status}</p>
+                            <p><strong>消息:</strong> ${progress.message}</p>
+                            ${progress.timestamp ? `<p><strong>更新时间:</strong> ${new Date(progress.timestamp).toLocaleString('zh-CN')}</p>` : ''}
+                        </div>
+                        <div class="progress-actions">
+                            <button class="btn" onclick="refreshProgress('${novelId}')">🔄 刷新进度</button>
+                            <button class="btn" onclick="closeModal()">关闭</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 自动刷新进度
+            const refreshInterval = setInterval(() => {
+                refreshProgress(novelId);
+            }, 2000);
+            
+            // 存储刷新间隔ID，用于清理
+            modal.refreshInterval = refreshInterval;
+        }
+        
+        // 刷新进度
+        async function refreshProgress(novelId) {
+            try {
+                const response = await fetch(`/api/novels/${novelId}/progress`);
+                const progress = await response.json();
+                
+                if (response.ok) {
+                    // 更新进度条
+                    const progressFill = document.querySelector('.progress-fill');
+                    const progressText = document.querySelector('.progress-text');
+                    const currentStep = document.querySelector('.progress-details p:nth-child(1)');
+                    const status = document.querySelector('.progress-details p:nth-child(2)');
+                    const message = document.querySelector('.progress-details p:nth-child(3)');
+                    const timestamp = document.querySelector('.progress-details p:nth-child(4)');
+                    
+                    if (progressFill) progressFill.style.width = `${progress.progress}%`;
+                    if (progressText) progressText.textContent = `${progress.progress}%`;
+                    if (currentStep) currentStep.innerHTML = `<strong>当前步骤:</strong> ${progress.current_step}`;
+                    if (status) status.innerHTML = `<strong>状态:</strong> ${progress.status}`;
+                    if (message) message.innerHTML = `<strong>消息:</strong> ${progress.message}`;
+                    if (timestamp && progress.timestamp) {
+                        timestamp.innerHTML = `<strong>更新时间:</strong> ${new Date(progress.timestamp).toLocaleString('zh-CN')}`;
+                    }
+                    
+                    // 如果分析完成，停止刷新并关闭模态框
+                    if (progress.status === 'completed' || progress.progress >= 100) {
+                        const modal = document.querySelector('.modal');
+                        if (modal && modal.refreshInterval) {
+                            clearInterval(modal.refreshInterval);
+                        }
+                        setTimeout(() => {
+                            closeModal();
+                            loadNovels(); // 刷新小说列表
+                        }, 2000);
+                    }
+                }
+            } catch (error) {
+                console.error('刷新进度失败:', error);
+            }
+        }
+        
+        // 关闭模态框
+        function closeModal() {
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                if (modal.refreshInterval) {
+                    clearInterval(modal.refreshInterval);
+                }
+                document.body.removeChild(modal);
+            }
         }
     </script>
 </body>

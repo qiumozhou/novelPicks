@@ -548,6 +548,18 @@ class NovelAnalyzer:
         
         return None
     
+    def update_progress(self, novel_id: str, progress: int, step: str, message: str = ""):
+        """更新分析进度"""
+        from main import analysis_progress
+        analysis_progress[novel_id] = {
+            "status": "processing",
+            "progress": progress,
+            "current_step": step,
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        }
+        print(f"[PROGRESS] {novel_id}: {progress}% - {step} - {message}", flush=True)
+
     async def analyze_novel_async(self, novel_id: str, file_path: str):
         """异步分析小说的完整流程"""
         try:
@@ -559,54 +571,70 @@ class NovelAnalyzer:
             print(f"[DB] 数据库状态: {'已连接' if self.db.client is not None else '未连接'}", flush=True)
             print(f"{'='*60}", flush=True)
             
+            # 初始化进度
+            self.update_progress(novel_id, 0, "初始化", "开始分析小说")
+            
             # 更新状态为处理中
             await self.db.update_novel_status(novel_id, "processing")
             print("[STATUS] 小说状态已更新为: processing", flush=True)
             
             # 读取小说内容
             print("\n[STEP1] 读取小说文件...", flush=True)
+            self.update_progress(novel_id, 10, "读取文件", "正在读取小说文件...")
             novel_content = self.read_novel(file_path)
             if not novel_content:
                 await self.db.update_novel_status(novel_id, "failed")
+                self.update_progress(novel_id, 0, "失败", "无法读取小说内容")
                 print("[ERROR] 无法读取小说内容", flush=True)
                 return
             print(f"[SUCCESS] 小说内容读取成功，总字数: {len(novel_content):,} 字符", flush=True)
+            self.update_progress(novel_id, 20, "文件读取完成", f"成功读取 {len(novel_content):,} 字符")
             
             # Step 1: 拆分并分析章节
             print("\n[STEP2] 章节级分析...", flush=True)
+            self.update_progress(novel_id, 25, "拆分章节", "正在拆分小说为章节...")
             segments = self.split_into_segments(novel_content, segment_size=50000)
             print(f"[INFO] 小说已拆分为 {len(segments)} 个段落，每段约5万字", flush=True)
             
+            self.update_progress(novel_id, 30, "分析章节", f"开始分析 {len(segments)} 个章节...")
             chapter_results = await self.step1_chapter_analysis(novel_id, segments)
             
             if not chapter_results:
                 await self.db.update_novel_status(novel_id, "failed")
+                self.update_progress(novel_id, 0, "失败", "章节级分析失败")
                 print("[ERROR] 章节级分析失败", flush=True)
                 return
             print(f"[SUCCESS] 章节级分析完成，共分析 {len(chapter_results)} 个段落", flush=True)
+            self.update_progress(novel_id, 50, "章节分析完成", f"成功分析 {len(chapter_results)} 个章节")
             
             # Step 2: 中层汇总
             print("\n[STEP3] 中层汇总分析...", flush=True)
+            self.update_progress(novel_id, 60, "中层汇总", "正在进行中层汇总分析...")
             group_results = await self.step2_group_analysis(novel_id, chapter_results, group_size=10)
             
             if not group_results:
                 await self.db.update_novel_status(novel_id, "failed")
+                self.update_progress(novel_id, 0, "失败", "中层汇总失败")
                 print("[ERROR] 中层汇总失败", flush=True)
                 return
             print(f"[SUCCESS] 中层汇总完成，共汇总 {len(group_results)} 组", flush=True)
+            self.update_progress(novel_id, 75, "中层汇总完成", f"成功汇总 {len(group_results)} 组")
             
             # Step 3: 全书整合
             print("\n[STEP4] 全书级整合分析...", flush=True)
+            self.update_progress(novel_id, 85, "全书分析", "正在进行全书级整合分析...")
             book_result = await self.step3_book_analysis(novel_id, group_results)
             
             if not book_result:
                 await self.db.update_novel_status(novel_id, "failed")
+                self.update_progress(novel_id, 0, "失败", "全书分析失败")
                 print("[ERROR] 全书分析失败", flush=True)
                 return
             print("[SUCCESS] 全书级分析完成", flush=True)
             
             # 更新状态为完成
             await self.db.update_novel_status(novel_id, "completed")
+            self.update_progress(novel_id, 100, "分析完成", "小说分析全部完成！")
             
             print(f"\n{'='*60}", flush=True)
             print(f"[COMPLETE] 小说分析完成!", flush=True)

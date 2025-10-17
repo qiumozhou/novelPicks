@@ -38,6 +38,9 @@ app.add_middleware(
 db = Database()
 analyzer = NovelAnalyzer(db)
 
+# 分析进度存储
+analysis_progress = {}
+
 # 创建static目录
 static_dir = Path("static")
 static_dir.mkdir(exist_ok=True)
@@ -167,6 +170,17 @@ async def get_debug_logs():
         "database_connected": db.client is not None,
         "analyzer_initialized": analyzer is not None
     }
+
+@app.get("/api/novels/{novel_id}/progress")
+async def get_analysis_progress(novel_id: str):
+    """获取分析进度"""
+    progress = analysis_progress.get(novel_id, {
+        "status": "not_found",
+        "progress": 0,
+        "current_step": "",
+        "message": "未找到分析进度"
+    })
+    return progress
 
 @app.post("/api/novels/upload", response_model=AnalysisResponse)
 async def upload_novel(
