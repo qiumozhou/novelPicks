@@ -29,8 +29,8 @@ class NovelAnalyzer:
             "base_url": "http://10.60.36.76:3100/v1",
             "api_key": "sk-d8rhT8SRFuXbTL5l304c83D58bA44488A2094807Da2cEcBe",
             "model_name": "gpt-5-chat",
-            "timeout": 120,
-            "max_retries": 3
+            "timeout": 300,  # 增加到5分钟
+            "max_retries": 5  # 增加重试次数
         }
         
         # Step 1: 章节级总结提示词
@@ -231,9 +231,13 @@ class NovelAnalyzer:
                     print(f"   ❌ API请求失败: {response.status_code} - {response.text}")
                     
             except requests.exceptions.Timeout:
-                print(f"   ⏰ 请求超时 (尝试 {attempt + 1}/{self.model_config['max_retries']})")
+                print(f"   ⏰ 请求超时 (尝试 {attempt + 1}/{self.model_config['max_retries']}) - 超时时间: {self.model_config['timeout']}秒")
+            except requests.exceptions.ConnectionError:
+                print(f"   🔌 连接错误 (尝试 {attempt + 1}/{self.model_config['max_retries']}) - 无法连接到API服务器")
+            except requests.exceptions.RequestException as e:
+                print(f"   ❌ 请求异常 (尝试 {attempt + 1}/{self.model_config['max_retries']}): {e}")
             except Exception as e:
-                print(f"   ❌ 请求失败: {e}")
+                print(f"   ❌ 未知错误 (尝试 {attempt + 1}/{self.model_config['max_retries']}): {e}")
             
             if attempt < self.model_config["max_retries"] - 1:
                 wait_time = (attempt + 1) * 3
@@ -315,41 +319,61 @@ class NovelAnalyzer:
             self.update_progress(novel_id, progress, f"调用AI分析章节 {i+1}", 
                                f"正在调用AI分析第{i+1}个段落...")
             
-            response = await self.call_llm(prompt, max_tokens=4000)
-            if response:
-                print(f"   📝 解析模型响应...")
-                self.update_progress(novel_id, progress, f"解析AI响应 {i+1}", 
-                                   f"正在解析AI对第{i+1}个段落的分析结果...")
+            # 重试机制
+            max_retries = 3
+            retry_count = 0
+            success = False
+            
+            while retry_count < max_retries and not success:
+                if retry_count > 0:
+                    print(f"   🔄 重试段落 {i + 1} (第 {retry_count + 1} 次重试)...")
+                    self.update_progress(novel_id, progress, f"重试章节 {i+1}", 
+                                       f"正在重试第{i+1}个段落的分析...")
+                    await asyncio.sleep(5)  # 重试前等待5秒
                 
-                result = self.extract_json_from_response(response)
-                if result:
-                    # 添加实际的UUID和小说ID
-                    if 'meta' not in result:
-                        result['meta'] = {}
+                response = await self.call_llm(prompt, max_tokens=4000)
+                if response:
+                    print(f"   📝 解析模型响应...")
+                    self.update_progress(novel_id, progress, f"解析AI响应 {i+1}", 
+                                       f"正在解析AI对第{i+1}个段落的分析结果...")
                     
-                    result['meta']['source_id'] = f"uuid-S{i+1:03d}-{str(uuid.uuid4())[:8]}"
-                    result['segment_id'] = f"S{i+1:03d}"
-                    result['novel_id'] = novel_id
-                    result['segment_number'] = i + 1
-                    
-                    # 确保所有数据都是可序列化的
-                    if 'meta' in result and isinstance(result['meta'], dict):
-                        for key, value in result['meta'].items():
-                            if hasattr(value, '__str__'):
-                                result['meta'][key] = str(value)
-                    
-                    chapter_results.append(result)
-                    print(f"   ✅ 段落 {i + 1} 分析完成")
-                    self.update_progress(novel_id, progress, f"章节 {i+1} 分析完成", 
-                                       f"第{i+1}个段落分析完成，已分析 {len(chapter_results)} 个段落")
+                    result = self.extract_json_from_response(response)
+                    if result:
+                        # 添加实际的UUID和小说ID
+                        if 'meta' not in result:
+                            result['meta'] = {}
+                        
+                        result['meta']['source_id'] = f"uuid-S{i+1:03d}-{str(uuid.uuid4())[:8]}"
+                        result['segment_id'] = f"S{i+1:03d}"
+                        result['novel_id'] = novel_id
+                        result['segment_number'] = i + 1
+                        
+                        # 确保所有数据都是可序列化的
+                        if 'meta' in result and isinstance(result['meta'], dict):
+                            for key, value in result['meta'].items():
+                                if hasattr(value, '__str__'):
+                                    result['meta'][key] = str(value)
+                        
+                        chapter_results.append(result)
+                        print(f"   ✅ 段落 {i + 1} 分析完成")
+                        self.update_progress(novel_id, progress, f"章节 {i+1} 分析完成", 
+                                           f"第{i+1}个段落分析完成，已分析 {len(chapter_results)} 个段落")
+                        success = True
+                    else:
+                        print(f"   ❌ 段落 {i + 1} JSON解析失败 (重试 {retry_count + 1}/{max_retries})")
+                        self.update_progress(novel_id, progress, f"章节 {i+1} 解析失败", 
+                                           f"第{i+1}个段落的AI响应解析失败，正在重试...")
+                        retry_count += 1
                 else:
-                    print(f"   ❌ 段落 {i + 1} JSON解析失败")
-                    self.update_progress(novel_id, progress, f"章节 {i+1} 解析失败", 
-                                       f"第{i+1}个段落的AI响应解析失败，正在重试...")
-            else:
-                print(f"   ❌ 段落 {i + 1} 模型调用失败")
-                self.update_progress(novel_id, progress, f"章节 {i+1} 调用失败", 
-                                   f"第{i+1}个段落的AI调用失败，正在重试...")
+                    print(f"   ❌ 段落 {i + 1} 模型调用失败 (重试 {retry_count + 1}/{max_retries})")
+                    self.update_progress(novel_id, progress, f"章节 {i+1} 调用失败", 
+                                       f"第{i+1}个段落的AI调用失败，正在重试...")
+                    retry_count += 1
+            
+            if not success:
+                print(f"   ❌ 段落 {i + 1} 最终失败，跳过此段落")
+                self.update_progress(novel_id, progress, f"章节 {i+1} 最终失败", 
+                                   f"第{i+1}个段落分析最终失败，跳过此段落继续处理...")
             
             # 添加延迟
             if i < len(segments) - 1:
