@@ -974,23 +974,26 @@
         function displayNovels(novels) {
             const container = document.getElementById('novelsList');
             
-            if (novels.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 50px; color: #6c757d;">
-                        <h3>暂无小说</h3>
-                        <p>请先上传小说文件</p>
-                    </div>
-                `;
-                return;
-            }
-            
             // 初始化小说数据
             allNovelsData = novels;
             filteredNovelsData = novels;
             currentNovelPage = 1;
             
-            // 添加搜索框
+            // 添加搜索框（无论是否有小说都添加）
             addSearchBox();
+            
+            if (novels.length === 0) {
+                // 清空容器并显示空状态
+                container.innerHTML = '';
+                const emptyDiv = document.createElement('div');
+                emptyDiv.style.cssText = 'text-align: center; padding: 50px; color: #6c757d;';
+                emptyDiv.innerHTML = `
+                    <h3>暂无小说</h3>
+                    <p>请先上传小说文件</p>
+                `;
+                container.appendChild(emptyDiv);
+                return;
+            }
             
             // 渲染小说列表
             renderNovelPage();
@@ -1076,8 +1079,13 @@
                 novelsContainer.appendChild(novelCard);
             });
             
-            // 更新容器内容
-            container.innerHTML = '';
+            // 移除旧的小说容器
+            const oldContainer = container.querySelector('#novels-container');
+            if (oldContainer) {
+                oldContainer.remove();
+            }
+            
+            // 添加新的小说容器
             container.appendChild(novelsContainer);
         }
         
@@ -1190,8 +1198,9 @@
                 <div class="search-info" id="search-info"></div>
             `;
             
-            // 在容器顶部插入搜索框
-            container.insertBefore(searchBox, container.firstChild);
+            // 清空容器并添加搜索框
+            container.innerHTML = '';
+            container.appendChild(searchBox);
         }
         
         // 搜索小说
